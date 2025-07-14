@@ -283,14 +283,14 @@ public class ForegroundServiceModule extends ReactContextBaseJavaModule {
     
     // Use the action to determine which button was pressed more reliably
     if ("button1".equals(action) && btn != null) {
-        map.putString("button", btn);
+        map.putString("event", btn);
     } else if ("button2".equals(action) && btn2 != null) {
-        map.putString("button2", btn2);
+        map.putString("event", btn2);
     } else if ("button3".equals(action) && btn3 != null) {
-        map.putString("button3", btn3);
+        map.putString("event", btn3);
     } else if (main != null) {
         // Main notification press (no action extra)
-        map.putString("main", main);
+        map.putString("event", main);
     }
     try {
         getReactApplicationContext()
