@@ -25,4 +25,5 @@ repositories {
 
 dependencies {
     implementation 'com.facebook.react:react-native:+'
+    implementation 'androidx.media:media:1.6.0'
 }

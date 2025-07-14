@@ -1,7 +1,10 @@
 package com.supersami.foregroundservice;
 
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.app.NotificationManager;
 import android.os.Build;
 import android.util.Log;
@@ -12,6 +15,8 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 
 import static com.supersami.foregroundservice.Constants.ERROR_INVALID_CONFIG;
 import static com.supersami.foregroundservice.Constants.ERROR_SERVICE_ERROR;
@@ -20,13 +25,32 @@ import static com.supersami.foregroundservice.Constants.TASK_CONFIG;
 
 public class ForegroundServiceModule extends ReactContextBaseJavaModule {
 
+    class ForegroundReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.d("ForegroundService", "msk kah " + intent.getAction());
+            foregroundEmitter(intent);
+        }
+    }
+
     private final ReactApplicationContext reactContext;
+    private ForegroundReceiver foregroundReceiver = new ForegroundReceiver();
 
     public ForegroundServiceModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
+        
+        // Register receiver immediately when module is created
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("com.supersami.foregroundservice.BUTTON_ACTION");
+        try {
+            reactContext.registerReceiver(foregroundReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            Log.d("ForegroundService", "Receiver registered successfully");
+        } catch (Exception e) {
+            Log.e("ForegroundService", "Failed to register receiver: " + e.getMessage());
+        }
     }
-
+    
     @Override
     public String getName() {
         return "ForegroundService";
@@ -245,4 +269,44 @@ public class ForegroundServiceModule extends ReactContextBaseJavaModule {
         promise.resolve(res);
     }
 
+    public  void  foregroundEmitter(Intent intent){
+    // this method is to send back data from java to javascript so one can easily
+    // know which button from notification or the notification button is clicked
+    String  main = intent.getStringExtra("mainOnPress");
+    String  btn = intent.getStringExtra("buttonOnPress");
+    String  btn2 = intent.getStringExtra("button2OnPress");
+    String  btn3 = intent.getStringExtra("button3OnPress");
+    WritableMap  map = Arguments.createMap();
+    if (main != null) {
+        map.putString("main", main);
+    }
+    if (btn != null) {
+        map.putString("button", btn);
+    }
+    if (btn2 != null) {
+        map.putString("button2", btn2);
+    }
+    if (btn3 != null) {
+        map.putString("button3", btn3);
+    }
+    try {
+        getReactApplicationContext()
+        // .getReactInstanceManager().getCurrentReactContext()
+        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+        .emit("notificationClickHandle", map);
+    } catch (Exception  e) {
+    Log.e("ForegroundService", "Caught Exception: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public void onCatalystInstanceDestroy() {
+      super.onCatalystInstanceDestroy();
+      try {
+          getReactApplicationContext().unregisterReceiver(foregroundReceiver);
+          Log.d("ForegroundService", "Receiver unregistered");
+      } catch (Exception e) {
+          Log.e("ForegroundService", "Error unregistering receiver: " + e.getMessage());
+      }
+  }
 }

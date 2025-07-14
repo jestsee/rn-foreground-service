@@ -13,6 +13,8 @@ import android.os.Build;
 import android.os.Bundle;
 import androidx.core.app.NotificationCompat;
 import android.util.Log;
+import android.support.v4.media.session.MediaSessionCompat;
+import androidx.media.app.NotificationCompat.MediaStyle;
 
 import com.facebook.react.R;
 
@@ -25,8 +27,10 @@ class NotificationHelper {
 
     PendingIntent pendingBtnIntent;
     PendingIntent pendingBtn2Intent;
+    PendingIntent pendingBtn3Intent;
     private Context context;
     private NotificationConfig config;
+    private MediaSessionCompat mediaSession;
 
     public static synchronized NotificationHelper getInstance(Context context) {
         if (instance == null) {
@@ -39,6 +43,10 @@ class NotificationHelper {
         mNotificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
         this.context = context;
         this.config = new NotificationConfig(context);
+        
+        // Initialize MediaSession if needed
+        mediaSession = new MediaSessionCompat(context, "ForegroundService");
+        mediaSession.setActive(true);
     }
 
     // Get the appropriate PendingIntent flags based on Android version
@@ -83,13 +91,14 @@ class NotificationHelper {
 
         // First button intent (if enabled)
         if (bundle.getBoolean("button", false)) {
-            Intent notificationBtnIntent = new Intent(context, mainActivityClass);
+            Intent notificationBtnIntent = new Intent("com.supersami.foregroundservice.BUTTON_ACTION");
             notificationBtnIntent.putExtra("buttonOnPress", bundle.getString("buttonOnPress"));
+            notificationBtnIntent.putExtra("action", "button1"); // Add this!
+            notificationBtnIntent.setPackage(context.getPackageName()); // Add this for security!
             int uniqueInt = (int) (System.currentTimeMillis() & 0xfffffff);
 
-            // Button intents are mutable if specified, immutable by default
             boolean buttonMutable = bundle.getBoolean("buttonMutable", false);
-            pendingBtnIntent = PendingIntent.getActivity(
+            pendingBtnIntent = PendingIntent.getBroadcast(
                 context, 
                 uniqueInt, 
                 notificationBtnIntent, 
@@ -99,17 +108,35 @@ class NotificationHelper {
 
         // Second button intent (if enabled)
         if (bundle.getBoolean("button2", false)) {
-            Intent notificationBtn2Intent = new Intent(context, mainActivityClass);
+            Intent notificationBtn2Intent = new Intent("com.supersami.foregroundservice.BUTTON_ACTION");
             notificationBtn2Intent.putExtra("button2OnPress", bundle.getString("button2OnPress"));
+            notificationBtn2Intent.putExtra("action", "button2"); // Add this!
+            notificationBtn2Intent.setPackage(context.getPackageName()); // Add this for security!
             int uniqueInt2 = (int) (System.currentTimeMillis() & 0xfffffff);
 
-            // Button intents are mutable if specified, immutable by default
             boolean button2Mutable = bundle.getBoolean("button2Mutable", false);
-            pendingBtn2Intent = PendingIntent.getActivity(
+            pendingBtn2Intent = PendingIntent.getBroadcast(
                 context, 
                 uniqueInt2, 
                 notificationBtn2Intent, 
                 getPendingIntentFlags(button2Mutable)
+            );
+        }
+        
+        // Third button intent (if enabled)
+        if (bundle.getBoolean("button3", false)) {
+            Intent notificationBtn3Intent = new Intent("com.supersami.foregroundservice.BUTTON_ACTION");
+            notificationBtn3Intent.putExtra("button3OnPress", bundle.getString("button3OnPress"));
+            notificationBtn3Intent.putExtra("action", "button3"); // Add this!
+            notificationBtn3Intent.setPackage(context.getPackageName()); // Add this for security!
+            int uniqueInt3 = (int) (System.currentTimeMillis() & 0xfffffff);
+
+            boolean button3Mutable = bundle.getBoolean("button3Mutable", false);
+            pendingBtn3Intent = PendingIntent.getBroadcast(
+                context, 
+                uniqueInt3, 
+                notificationBtn3Intent, 
+                getPendingIntentFlags(button3Mutable)
             );
         }
 
@@ -171,20 +198,55 @@ class NotificationHelper {
             .setContentText(bundle.getString("message"));
 
         // Add action buttons if configured
+        int actionCount = 0;
         if (bundle.getBoolean("button", false)) {
+            // Get custom icon or use default
+            String buttonIcon = bundle.getString("buttonIcon", "ic_prev");
+            int iconResId = getResourceIdForResourceName(context, buttonIcon);
+            if (iconResId == 0) {
+                if ("pause".equals(bundle.getString("buttonText"))) {
+                    iconResId = android.R.drawable.ic_media_pause;
+                } else {
+                    iconResId = android.R.drawable.ic_media_rew; // fallback to system icon
+                }
+            }
+            
             notificationBuilder.addAction(
-                R.drawable.redbox_top_border_background, 
+                iconResId, 
                 bundle.getString("buttonText", "Button"), 
                 pendingBtnIntent
             );
+            actionCount++;
         }
 
         if (bundle.getBoolean("button2", false)) {
+            String button2Icon = bundle.getString("button2Icon", "ic_pause");
+            int iconResId = getResourceIdForResourceName(context, button2Icon);
+            if (iconResId == 0) {
+                iconResId = android.R.drawable.ic_media_pause; // fallback to system icon
+            }
+            
             notificationBuilder.addAction(
-                R.drawable.redbox_top_border_background, 
+                iconResId,
                 bundle.getString("button2Text", "Button"), 
                 pendingBtn2Intent
             );
+            actionCount++;
+        }
+
+        if (bundle.getBoolean("button3", false)) {
+            String button3Icon = bundle.getString("button3Icon", "ic_next");
+            int iconResId = getResourceIdForResourceName(context, button3Icon);
+            if (iconResId == 0) {
+                iconResId = android.R.drawable.ic_media_ff; // fallback to system icon
+            }
+            
+            notificationBuilder.addAction(
+                iconResId, 
+                bundle.getString("button3Text", "Button"), 
+                pendingBtn3Intent
+            );
+            actionCount++;
         }
         
         // Set notification color
@@ -201,8 +263,31 @@ class NotificationHelper {
             }
         }
 
-        // Use big text style for better readability
-        notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(bundle.getString("message")));
+        // Choose style based on configuration
+        boolean useMediaStyle = bundle.getBoolean("useMediaStyle", true);
+        boolean showActionsInCompact = bundle.getBoolean("showActionsInCompact", true);
+        
+        if (useMediaStyle && actionCount > 0) {
+            // Use MediaStyle with actions in compact view
+            MediaStyle mediaStyle = new MediaStyle()
+                .setMediaSession(mediaSession.getSessionToken());
+            
+            if (showActionsInCompact) {
+                // Show up to 3 actions in compact view
+                if (actionCount == 1) {
+                    mediaStyle.setShowActionsInCompactView(0);
+                } else if (actionCount == 2) {
+                    mediaStyle.setShowActionsInCompactView(0, 1);
+                } else if (actionCount >= 3) {
+                    mediaStyle.setShowActionsInCompactView(0, 1, 2);
+                }
+            }
+            
+            notificationBuilder.setStyle(mediaStyle);
+        } else {
+            // Use big text style for better readability
+            notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(bundle.getString("message")));
+        }
 
         // Set small icon
         String iconName = bundle.getString("icon");
@@ -328,7 +413,21 @@ class NotificationHelper {
         channel.enableVibration(bundle.getBoolean("vibration"));
         channel.setShowBadge(true);
 
-        manager.createNotificationChannel(channel);
+        try {
+            manager.createNotificationChannel(channel);
+            Log.d("ForegroundService", "Notification built successfully");
+        } catch (Exception e) {
+            Log.e("ForegroundService", "Failed to build notification", e);
+            throw e;
+        }
         channelCreated = true;
+    }
+    
+    // Clean up MediaSession when done
+    public void cleanup() {
+        if (mediaSession != null) {
+            mediaSession.setActive(false);
+            mediaSession.release();
+        }
     }
 }
