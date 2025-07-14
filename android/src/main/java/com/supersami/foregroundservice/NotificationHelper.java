@@ -207,8 +207,8 @@ class NotificationHelper {
             String buttonIcon = bundle.getString("buttonIcon", "ic_prev");
             int iconResId = getResourceIdForResourceName(context, buttonIcon);
             if (iconResId == 0) {
-                if ("pause".equals(bundle.getString("buttonText"))) {
-                    iconResId = android.R.drawable.ic_media_pause;
+                if ("play".equals(bundle.getString("buttonText"))) {
+                    iconResId = android.R.drawable.ic_media_play;
                 } else {
                     iconResId = android.R.drawable.ic_media_rew; // fallback to system icon
                 }
