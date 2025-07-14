@@ -23,10 +23,14 @@ declare const ReactNativeForegroundService: {
     button2,
     button2Text,
     button2OnPress,
+    button3,
+    button3Text,
+    button3OnPress,
     mainOnPress,
     progress,
     color,
     setOnlyAlertOnce,
+    ServiceType,
   }: {
     id: any;
     title?: any;
@@ -43,6 +47,9 @@ declare const ReactNativeForegroundService: {
     button2?: boolean | undefined;
     button2Text?: string | undefined;
     button2OnPress?: string | undefined;
+    button3?: boolean | undefined;
+    button3Text?: string | undefined;
+    button3OnPress?: string | undefined;
     mainOnPress?: string | undefined;
     progress?: {
       max: number;
@@ -50,6 +57,7 @@ declare const ReactNativeForegroundService: {
     };
     color?: string;
     setOnlyAlertOnce?: string;
+    ServiceType: string;
   }) => Promise<void>;
   update: ({
     id,
@@ -67,10 +75,14 @@ declare const ReactNativeForegroundService: {
     button2,
     button2Text,
     button2OnPress,
+    button3,
+    button3Text,
+    button3OnPress,
     mainOnPress,
     progress,
     color,
     setOnlyAlertOnce,
+    ServiceType
   }: {
     id: any;
     title?: any;
@@ -87,6 +99,9 @@ declare const ReactNativeForegroundService: {
     button2?: boolean | undefined;
     button2Text?: string | undefined;
     button2OnPress?: string | undefined;
+    button3?: boolean | undefined;
+    button3Text?: string | undefined;
+    button3OnPress?: string | undefined;
     mainOnPress?: string | undefined;
     progress?: {
       max: number;
@@ -94,6 +109,7 @@ declare const ReactNativeForegroundService: {
     };
     color?: string;
     setOnlyAlertOnce?: string;
+    ServiceType: string;
   }) => Promise<void>;
   stop: () => Promise<any>;
   stopAll: () => Promise<any>;
