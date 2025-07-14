@@ -28,7 +28,6 @@ public class ForegroundServiceModule extends ReactContextBaseJavaModule {
     class ForegroundReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.d("ForegroundService", "msk kah " + intent.getAction());
             foregroundEmitter(intent);
         }
     }
@@ -272,22 +271,26 @@ public class ForegroundServiceModule extends ReactContextBaseJavaModule {
     public  void  foregroundEmitter(Intent intent){
     // this method is to send back data from java to javascript so one can easily
     // know which button from notification or the notification button is clicked
+    String action = intent.getStringExtra("action");
     String  main = intent.getStringExtra("mainOnPress");
     String  btn = intent.getStringExtra("buttonOnPress");
     String  btn2 = intent.getStringExtra("button2OnPress");
     String  btn3 = intent.getStringExtra("button3OnPress");
+
+    Log.d("ForegroundService", "Button pressed - action: " + action + ", main=" + main + ", button=" + btn + ", button2=" + btn2 + ", button3=" + btn3);
+    
     WritableMap  map = Arguments.createMap();
-    if (main != null) {
-        map.putString("main", main);
-    }
-    if (btn != null) {
+    
+    // Use the action to determine which button was pressed more reliably
+    if ("button1".equals(action) && btn != null) {
         map.putString("button", btn);
-    }
-    if (btn2 != null) {
+    } else if ("button2".equals(action) && btn2 != null) {
         map.putString("button2", btn2);
-    }
-    if (btn3 != null) {
+    } else if ("button3".equals(action) && btn3 != null) {
         map.putString("button3", btn3);
+    } else if (main != null) {
+        // Main notification press (no action extra)
+        map.putString("main", main);
     }
     try {
         getReactApplicationContext()

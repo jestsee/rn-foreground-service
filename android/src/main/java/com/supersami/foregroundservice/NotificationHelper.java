@@ -89,13 +89,16 @@ class NotificationHelper {
             getPendingIntentFlags(mainIntentMutable)
         );
 
+        // Generate a base timestamp for unique request codes
+        long baseTime = System.currentTimeMillis();
+        
         // First button intent (if enabled)
         if (bundle.getBoolean("button", false)) {
             Intent notificationBtnIntent = new Intent("com.supersami.foregroundservice.BUTTON_ACTION");
             notificationBtnIntent.putExtra("buttonOnPress", bundle.getString("buttonOnPress"));
             notificationBtnIntent.putExtra("action", "button1"); // Add this!
             notificationBtnIntent.setPackage(context.getPackageName()); // Add this for security!
-            int uniqueInt = (int) (System.currentTimeMillis() & 0xfffffff);
+            int uniqueInt = (int) ((baseTime + 1) & 0xfffffff); // Add 1 to ensure uniqueness
 
             boolean buttonMutable = bundle.getBoolean("buttonMutable", false);
             pendingBtnIntent = PendingIntent.getBroadcast(
@@ -112,7 +115,7 @@ class NotificationHelper {
             notificationBtn2Intent.putExtra("button2OnPress", bundle.getString("button2OnPress"));
             notificationBtn2Intent.putExtra("action", "button2"); // Add this!
             notificationBtn2Intent.setPackage(context.getPackageName()); // Add this for security!
-            int uniqueInt2 = (int) (System.currentTimeMillis() & 0xfffffff);
+            int uniqueInt2 = (int) ((baseTime + 2) & 0xfffffff); // Add 2 to ensure uniqueness
 
             boolean button2Mutable = bundle.getBoolean("button2Mutable", false);
             pendingBtn2Intent = PendingIntent.getBroadcast(
@@ -129,7 +132,7 @@ class NotificationHelper {
             notificationBtn3Intent.putExtra("button3OnPress", bundle.getString("button3OnPress"));
             notificationBtn3Intent.putExtra("action", "button3"); // Add this!
             notificationBtn3Intent.setPackage(context.getPackageName()); // Add this for security!
-            int uniqueInt3 = (int) (System.currentTimeMillis() & 0xfffffff);
+            int uniqueInt3 = (int) ((baseTime + 3) & 0xfffffff); // Add 3 to ensure uniqueness
 
             boolean button3Mutable = bundle.getBoolean("button3Mutable", false);
             pendingBtn3Intent = PendingIntent.getBroadcast(

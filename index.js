@@ -275,7 +275,7 @@ const update = async ({
   button2OnPress = 'button2OnPress',
   button3 = false,
   button3Text = '',
-  button3OnPress = 'button2OnPress',
+  button3OnPress = 'button3OnPress',
   mainOnPress = 'mainOnPress',
   progress,
   color,
