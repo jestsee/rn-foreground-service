@@ -103,12 +103,12 @@ class NotificationHelper {
     }
     
     // Update playback state for display purposes only (actual playback handled by LiveKit)
-    private void updatePlaybackStateForDisplay() {
+    public void updatePlaybackStateForDisplay() {
         updatePlaybackStateForDisplay("playing"); // Default to playing state
     }
     
     // Overloaded method to set specific playback state
-    private void updatePlaybackStateForDisplay(String state) {
+    public void updatePlaybackStateForDisplay(String state) {
         if (mediaSession != null) {
             PlaybackStateCompat.Builder playbackStateBuilder = 
                 new PlaybackStateCompat.Builder();

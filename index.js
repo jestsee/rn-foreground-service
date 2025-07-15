@@ -461,7 +461,7 @@ const ReactNativeForegroundService = {
   get_task,
   get_all_tasks,
   eventListener,
-  updateMediaDisplayState,
+  updateMediaDisplayState: ForegroundService.updateMediaDisplayState,
 };
 
 export default ReactNativeForegroundService;
