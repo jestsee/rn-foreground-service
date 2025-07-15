@@ -104,6 +104,11 @@ class NotificationHelper {
     
     // Update playback state for display purposes only (actual playback handled by LiveKit)
     private void updatePlaybackStateForDisplay() {
+        updatePlaybackStateForDisplay("playing"); // Default to playing state
+    }
+    
+    // Overloaded method to set specific playback state
+    private void updatePlaybackStateForDisplay(String state) {
         if (mediaSession != null) {
             PlaybackStateCompat.Builder playbackStateBuilder = 
                 new PlaybackStateCompat.Builder();
@@ -117,15 +122,30 @@ class NotificationHelper {
                 PlaybackStateCompat.ACTION_STOP
             );
             
-            // Set state to "playing" to show as active media session initially
-            // (actual audio playback is handled by LiveKit)
+            // Map state string to PlaybackStateCompat constant
+            int displayState;
+            switch (state.toLowerCase()) {
+                case "playing":
+                    displayState = PlaybackStateCompat.STATE_PLAYING;
+                    break;
+                case "paused":
+                    displayState = PlaybackStateCompat.STATE_PAUSED;
+                    break;
+                case "stopped":
+                    displayState = PlaybackStateCompat.STATE_STOPPED;
+                    break;
+                default:
+                    displayState = PlaybackStateCompat.STATE_PLAYING; // Default to playing
+            }
+            
             playbackStateBuilder.setState(
-                PlaybackStateCompat.STATE_PLAYING, 
+                displayState, 
                 PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 
                 1.0f // Normal playback rate for display purposes
             );
             
             mediaSession.setPlaybackState(playbackStateBuilder.build());
+            Log.d(TAG, "MediaSession display state set to: " + state);
         }
     }
     

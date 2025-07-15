@@ -271,12 +271,12 @@ public class ForegroundServiceModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void updateMediaDisplayState(String state, Promise promise) {
         try {
-            NotificationHelper notificationHelper = NotificationHelper.getInstance(getReactApplicationContext());
-            if (notificationHelper != null) {
-                notificationHelper.updateDisplayState(state);
+            ForegroundService serviceInstance = ForegroundService.getInstance();
+            if (serviceInstance != null) {
+                serviceInstance.updatePlaybackStateForDisplay(state);
                 promise.resolve("Display state updated to: " + state);
             } else {
-                promise.reject("ERROR", "NotificationHelper not available");
+                promise.reject("ERROR", "ForegroundService not running");
             }
         } catch (Exception e) {
             promise.reject("ERROR", "Failed to update display state: " + e.getMessage());

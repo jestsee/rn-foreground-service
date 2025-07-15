@@ -131,6 +131,16 @@ class ForegroundService {
   static async isRunning() {
     return await ForegroundServiceModule.isRunning();
   }
+
+  /**
+   * Updates the MediaSession playback state for display purposes.
+   * This affects how the notification appears in lock screen, media controls, etc.
+   * @param {string} state - Playback state: "playing", "paused", "stopped"
+   * @return Promise
+   */
+  static async updateMediaDisplayState(state) {
+    return await ForegroundServiceModule.updateMediaDisplayState(state);
+  }
 }
 
 const randHashString = (len) => {
@@ -451,6 +461,7 @@ const ReactNativeForegroundService = {
   get_task,
   get_all_tasks,
   eventListener,
+  updateMediaDisplayState,
 };
 
 export default ReactNativeForegroundService;

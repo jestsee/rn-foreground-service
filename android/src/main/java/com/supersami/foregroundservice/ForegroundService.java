@@ -15,6 +15,7 @@ import android.util.Log;
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.facebook.react.HeadlessJsTaskService;
+import android.support.v4.media.session.PlaybackStateCompat;
 
 import static com.supersami.foregroundservice.Constants.NOTIFICATION_CONFIG;
 import static com.supersami.foregroundservice.Constants.TASK_CONFIG;
@@ -115,6 +116,21 @@ public class ForegroundService extends Service {
                         .emit("onServiceError", e.getMessage());
             }
             return false;
+        }
+    }
+
+    // expose updatePlaybackStateForDisplay to react native
+    public void updatePlaybackStateForDisplay(String state) {
+        try {
+            NotificationHelper notificationHelper = NotificationHelper.getInstance(getApplicationContext());
+            if (notificationHelper != null) {
+                notificationHelper.updatePlaybackStateForDisplay(state);
+                Log.d("ForegroundService", "Playback state updated to: " + state);
+            } else {
+                Log.w("ForegroundService", "NotificationHelper not available, cannot update playback state");
+            }
+        } catch (Exception e) {
+            Log.e("ForegroundService", "Failed to update playback state: " + e.getMessage());
         }
     }
 
@@ -341,5 +357,30 @@ public class ForegroundService extends Service {
                 }
             }, delay);
         }
+    }
+    
+    // Method to emit media session events to JavaScript
+    public void emitMediaSessionEvent(String eventType) {
+        if (reactContext != null) {
+            try {
+                com.facebook.react.bridge.WritableMap map = com.facebook.react.bridge.Arguments.createMap();
+                map.putString("event", eventType);
+                
+                reactContext
+                    .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                    .emit("notificationClickHandle", map);
+                    
+                Log.d("ForegroundService", "Media session event emitted: " + eventType);
+            } catch (Exception e) {
+                Log.e("ForegroundService", "Failed to emit media session event: " + e.getMessage());
+            }
+        } else {
+            Log.w("ForegroundService", "ReactContext is null, cannot emit media session event: " + eventType);
+        }
+    }
+
+    // Method to get the react context for use by NotificationHelper
+    public ReactContext getReactApplicationContext() {
+        return reactContext;
     }
 }
