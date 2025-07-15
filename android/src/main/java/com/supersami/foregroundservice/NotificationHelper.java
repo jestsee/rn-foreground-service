@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat;
 import android.util.Log;
 import android.support.v4.media.session.MediaSessionCompat;
 import androidx.media.app.NotificationCompat.MediaStyle;
+import android.support.v4.media.session.PlaybackStateCompat;
 
 import com.facebook.react.R;
 
@@ -44,9 +45,129 @@ class NotificationHelper {
         this.context = context;
         this.config = new NotificationConfig(context);
         
-        // Initialize MediaSession if needed
+        // Initialize MediaSession with proper setup
+        initializeMediaSession(context);
+    }
+
+    // Proper MediaSession initialization for display-only (no actual audio playback)
+    private void initializeMediaSession(Context context) {
         mediaSession = new MediaSessionCompat(context, "ForegroundService");
+        
+        // Set up the media session with custom callbacks that forward to your app
+        mediaSession.setCallback(new MediaSessionCompat.Callback() {
+            @Override
+            public boolean onMediaButtonEvent(Intent mediaButtonEvent) {
+                // Don't handle media button events - let your app handle them
+                Log.d(TAG, "Media button event received but not handled by MediaSession");
+                return false; // Return false to let other handlers process it
+            }
+            
+            @Override
+            public void onPlay() {
+                Log.d(TAG, "MediaSession onPlay called - forwarding to app");
+                emitMediaSessionEvent("media_play");
+            }
+            
+            @Override
+            public void onPause() {
+                Log.d(TAG, "MediaSession onPause called - forwarding to app");
+                emitMediaSessionEvent("media_pause");
+            }
+            
+            @Override
+            public void onSkipToNext() {
+                Log.d(TAG, "MediaSession onSkipToNext called - forwarding to app");
+                emitMediaSessionEvent("media_next");
+            }
+            
+            @Override
+            public void onSkipToPrevious() {
+                Log.d(TAG, "MediaSession onSkipToPrevious called - forwarding to app");
+                emitMediaSessionEvent("media_previous");
+            }
+            
+            @Override
+            public void onStop() {
+                Log.d(TAG, "MediaSession onStop called - forwarding to app");
+                emitMediaSessionEvent("media_stop");
+            }
+        });
+        
+        // Set playback state to display the controls but indicate we're not actually playing audio
+        updatePlaybackStateForDisplay();
+        
+        // Make the session active for UI display
         mediaSession.setActive(true);
+        
+        Log.d(TAG, "Display-only MediaSession initialized and activated");
+    }
+    
+    // Update playback state for display purposes only (actual playback handled by LiveKit)
+    private void updatePlaybackStateForDisplay() {
+        if (mediaSession != null) {
+            PlaybackStateCompat.Builder playbackStateBuilder = 
+                new PlaybackStateCompat.Builder();
+            
+            // Set actions to show the controls but indicate we're not handling the audio
+            playbackStateBuilder.setActions(
+                PlaybackStateCompat.ACTION_PLAY |
+                PlaybackStateCompat.ACTION_PAUSE |
+                PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS |
+                PlaybackStateCompat.ACTION_STOP
+            );
+            
+            // Set state to "playing" to show as active media session initially
+            // (actual audio playback is handled by LiveKit)
+            playbackStateBuilder.setState(
+                PlaybackStateCompat.STATE_PLAYING, 
+                PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 
+                1.0f // Normal playback rate for display purposes
+            );
+            
+            mediaSession.setPlaybackState(playbackStateBuilder.build());
+        }
+    }
+    
+    // Method to update display state based on LiveKit's actual state
+    public void updateDisplayState(String liveKitState) {
+        if (mediaSession != null) {
+            PlaybackStateCompat.Builder playbackStateBuilder = 
+                new PlaybackStateCompat.Builder();
+            
+            playbackStateBuilder.setActions(
+                PlaybackStateCompat.ACTION_PLAY |
+                PlaybackStateCompat.ACTION_PAUSE |
+                PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS |
+                PlaybackStateCompat.ACTION_STOP
+            );
+            
+            // Map LiveKit state to display state
+            int displayState;
+            switch (liveKitState.toLowerCase()) {
+                case "playing":
+                    displayState = PlaybackStateCompat.STATE_PLAYING;
+                    break;
+                case "paused":
+                    displayState = PlaybackStateCompat.STATE_PAUSED;
+                    break;
+                case "stopped":
+                    displayState = PlaybackStateCompat.STATE_STOPPED;
+                    break;
+                default:
+                    displayState = PlaybackStateCompat.STATE_NONE;
+            }
+            
+            playbackStateBuilder.setState(
+                displayState, 
+                PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 
+                1.0f
+            );
+            
+            mediaSession.setPlaybackState(playbackStateBuilder.build());
+            Log.d(TAG, "MediaSession display state updated to: " + liveKitState);
+        }
     }
 
     // Get the appropriate PendingIntent flags based on Android version
@@ -271,22 +392,38 @@ class NotificationHelper {
         boolean showActionsInCompact = bundle.getBoolean("showActionsInCompact", true);
         
         if (useMediaStyle && actionCount > 0) {
+            // Ensure MediaSession is still active for display
+            if (mediaSession != null && !mediaSession.isActive()) {
+                mediaSession.setActive(true);
+                updatePlaybackStateForDisplay();
+                Log.d(TAG, "MediaSession reactivated for display");
+            }
+            
             // Use MediaStyle with actions in compact view
             MediaStyle mediaStyle = new MediaStyle()
                 .setMediaSession(mediaSession.getSessionToken());
             
-            if (showActionsInCompact) {
-                // Show up to 3 actions in compact view
+            // Show all actions in compact view for larger display
+            if (showActionsInCompact && actionCount > 0) {
+                // Show up to 5 actions in compact view (Android limit)
                 if (actionCount == 1) {
                     mediaStyle.setShowActionsInCompactView(0);
                 } else if (actionCount == 2) {
                     mediaStyle.setShowActionsInCompactView(0, 1);
-                } else if (actionCount >= 3) {
+                } else if (actionCount == 3) {
                     mediaStyle.setShowActionsInCompactView(0, 1, 2);
+                } else if (actionCount == 4) {
+                    mediaStyle.setShowActionsInCompactView(0, 1, 2, 3);
+                } else if (actionCount >= 5) {
+                    mediaStyle.setShowActionsInCompactView(0, 1, 2, 3, 4);
                 }
             }
             
             notificationBuilder.setStyle(mediaStyle);
+            
+            // Set additional flags to keep it visible on lock screen
+            notificationBuilder.setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
+            
         } else {
             // Use big text style for better readability
             notificationBuilder.setStyle(new NotificationCompat.BigTextStyle().bigText(bundle.getString("message")));
@@ -431,6 +568,43 @@ class NotificationHelper {
         if (mediaSession != null) {
             mediaSession.setActive(false);
             mediaSession.release();
+            mediaSession = null;
+            Log.d(TAG, "MediaSession cleaned up");
+        }
+    }
+
+    // Method to ensure MediaSession stays active for display
+    public void ensureMediaSessionActive() {
+        if (mediaSession != null) {
+            if (!mediaSession.isActive()) {
+                mediaSession.setActive(true);
+                Log.d(TAG, "MediaSession reactivated for display");
+            }
+            updatePlaybackStateForDisplay();
+        }
+    }
+    
+    // Call this method when updating notifications to keep display controls active
+    public void refreshMediaSession() {
+        if (mediaSession != null) {
+            updatePlaybackStateForDisplay();
+            Log.d(TAG, "MediaSession display state refreshed");
+        }
+    }
+    
+    // Helper method to emit MediaSession events to JavaScript
+    private void emitMediaSessionEvent(String eventType) {
+        try {
+            // Get the ForegroundService instance to access the emitter
+            ForegroundService serviceInstance = ForegroundService.getInstance();
+            if (serviceInstance != null) {
+                serviceInstance.emitMediaSessionEvent(eventType);
+                Log.d(TAG, "MediaSession event forwarded to JS: " + eventType);
+            } else {
+                Log.w(TAG, "ForegroundService instance not available, cannot emit: " + eventType);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to emit media session event: " + e.getMessage());
         }
     }
 }

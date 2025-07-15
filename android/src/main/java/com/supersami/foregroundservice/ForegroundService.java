@@ -68,6 +68,13 @@ public class ForegroundService extends Service {
     public void onDestroy() {
         //Log.e("ForegroundService", "destroy called");
         this.handler.removeCallbacks(this.runnableCode);
+        
+        // Clean up MediaSession
+        NotificationHelper notificationHelper = NotificationHelper.getInstance(getApplicationContext());
+        if (notificationHelper != null) {
+            notificationHelper.cleanup();
+        }
+        
         running = 0;
         mInstance = null;
     }
@@ -82,9 +89,11 @@ public class ForegroundService extends Service {
             int id = (int) notificationConfig.getDouble("id");
             String foregroundServiceType = notificationConfig.getString("ServiceType");
 
-            Notification notification = NotificationHelper
-                .getInstance(getApplicationContext())
-                .buildNotification(getApplicationContext(), notificationConfig);
+            NotificationHelper notificationHelper = NotificationHelper.getInstance(getApplicationContext());
+            Notification notification = notificationHelper.buildNotification(getApplicationContext(), notificationConfig);
+            
+            // Ensure MediaSession is active for lock screen controls
+            notificationHelper.ensureMediaSessionActive();
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 // For Android 10 (API 29) and above
@@ -231,9 +240,11 @@ public class ForegroundService extends Service {
                         try {
                             int id = (int) notificationConfig.getDouble("id");
 
-                            Notification notification = NotificationHelper
-                                    .getInstance(getApplicationContext())
-                                    .buildNotification(getApplicationContext(), notificationConfig);
+                            NotificationHelper notificationHelper = NotificationHelper.getInstance(getApplicationContext());
+                            Notification notification = notificationHelper.buildNotification(getApplicationContext(), notificationConfig);
+                            
+                            // Refresh MediaSession to keep lock screen controls active
+                            notificationHelper.refreshMediaSession();
 
                             NotificationManager mNotificationManager = (NotificationManager) getSystemService(getApplicationContext().NOTIFICATION_SERVICE);
                             mNotificationManager.notify(id, notification);

@@ -268,6 +268,21 @@ public class ForegroundServiceModule extends ReactContextBaseJavaModule {
         promise.resolve(res);
     }
 
+    @ReactMethod
+    public void updateMediaDisplayState(String state, Promise promise) {
+        try {
+            NotificationHelper notificationHelper = NotificationHelper.getInstance(getReactApplicationContext());
+            if (notificationHelper != null) {
+                notificationHelper.updateDisplayState(state);
+                promise.resolve("Display state updated to: " + state);
+            } else {
+                promise.reject("ERROR", "NotificationHelper not available");
+            }
+        } catch (Exception e) {
+            promise.reject("ERROR", "Failed to update display state: " + e.getMessage());
+        }
+    }
+
     public  void  foregroundEmitter(Intent intent){
     // this method is to send back data from java to javascript so one can easily
     // know which button from notification or the notification button is clicked
