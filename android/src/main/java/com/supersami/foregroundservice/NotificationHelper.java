@@ -109,7 +109,7 @@ class NotificationHelper {
 
     // Method to update playback actions 
     // Which accept params array string for actions
-    public void updatePlaybackActions(String... actions) {
+    public void updatePlaybackActions(String[] actions) {
         if (mediaSession != null) {
             PlaybackStateCompat.Builder playbackStateBuilder = 
                 new PlaybackStateCompat.Builder();

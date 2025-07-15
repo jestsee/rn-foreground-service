@@ -284,7 +284,7 @@ public class ForegroundServiceModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void updatePlaybackActions(ReadableMap actions, Promise promise) {
+    public void updatePlaybackActions(String[] actions, Promise promise) {
         if (actions == null) {
             promise.reject(ERROR_INVALID_CONFIG, "ForegroundService: Actions config is invalid");
             return;
