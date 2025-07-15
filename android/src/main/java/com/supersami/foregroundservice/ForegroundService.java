@@ -134,6 +134,20 @@ public class ForegroundService extends Service {
         }
     }
 
+    // expose updatePlaybackActions to react native
+    public void updatePlaybackActions(String... action) {
+        try {
+            NotificationHelper notificationHelper = NotificationHelper.getInstance(getApplicationContext());
+            if (notificationHelper != null) {
+                notificationHelper.updatePlaybackActions(action);
+            } else {
+                Log.w("ForegroundService", "NotificationHelper not available, cannot update playback actions");
+            }
+        } catch (Exception e) {
+            Log.e("ForegroundService", "Failed to update playback actions: " + e.getMessage());
+        }
+    }
+
     private int getServiceTypeForAndroid10(String customServiceType) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             switch (customServiceType) {

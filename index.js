@@ -141,6 +141,16 @@ class ForegroundService {
   static async updateMediaDisplayState(state) {
     return await ForegroundServiceModule.updateMediaDisplayState(state);
   }
+
+  /**
+   * Updates the actions available in the MediaSession.
+   * This allows enabling/disabling next/previous buttons for media navigation.
+   * @param {string[]} actions - Array of actions to enable, e.g. ["next", "previous"]
+   * @return Promise
+   */
+  static async updateMediaActions(actions) {
+    return await ForegroundServiceModule.updateMediaActions(actions);
+  }
 }
 
 const randHashString = (len) => {
@@ -462,6 +472,7 @@ const ReactNativeForegroundService = {
   get_all_tasks,
   eventListener,
   updateMediaDisplayState: ForegroundService.updateMediaDisplayState,
+  updateMediaActions: ForegroundService.updateMediaActions,
 };
 
 export default ReactNativeForegroundService;

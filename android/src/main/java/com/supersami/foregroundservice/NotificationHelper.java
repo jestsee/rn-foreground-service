@@ -106,6 +106,47 @@ class NotificationHelper {
     public void updatePlaybackStateForDisplay() {
         updatePlaybackStateForDisplay("playing"); // Default to playing state
     }
+
+    // Method to update playback actions 
+    // Which accept params array string for actions
+    public void updatePlaybackActions(String... actions) {
+        if (mediaSession != null) {
+            PlaybackStateCompat.Builder playbackStateBuilder = 
+                new PlaybackStateCompat.Builder();
+            
+            // Set actions based on provided parameters
+            int actionFlags = 0;
+            for (String action : actions) {
+                switch (action.toLowerCase()) {
+                    case "play":
+                        actionFlags |= PlaybackStateCompat.ACTION_PLAY;
+                        break;
+                    case "pause":
+                        actionFlags |= PlaybackStateCompat.ACTION_PAUSE;
+                        break;
+                    case "next":
+                        actionFlags |= PlaybackStateCompat.ACTION_SKIP_TO_NEXT;
+                        break;
+                    case "previous":
+                        actionFlags |= PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
+                        break;
+                    case "stop":
+                        actionFlags |= PlaybackStateCompat.ACTION_STOP;
+                        break;
+                }
+            }
+            
+            playbackStateBuilder.setActions(actionFlags);
+            playbackStateBuilder.setState(
+                PlaybackStateCompat.STATE_PLAYING, 
+                PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 
+                1.0f // Normal playback rate for display purposes
+            );
+            
+            mediaSession.setPlaybackState(playbackStateBuilder.build());
+            Log.d(TAG, "MediaSession display state updated with actions: " + String.join(", ", actions));
+        }
+    }
     
     // Overloaded method to set specific playback state
     public void updatePlaybackStateForDisplay(String state) {
@@ -149,47 +190,6 @@ class NotificationHelper {
         }
     }
     
-    // Method to update display state based on LiveKit's actual state
-    public void updateDisplayState(String liveKitState) {
-        if (mediaSession != null) {
-            PlaybackStateCompat.Builder playbackStateBuilder = 
-                new PlaybackStateCompat.Builder();
-            
-            playbackStateBuilder.setActions(
-                PlaybackStateCompat.ACTION_PLAY |
-                PlaybackStateCompat.ACTION_PAUSE |
-                PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
-                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS |
-                PlaybackStateCompat.ACTION_STOP
-            );
-            
-            // Map LiveKit state to display state
-            int displayState;
-            switch (liveKitState.toLowerCase()) {
-                case "playing":
-                    displayState = PlaybackStateCompat.STATE_PLAYING;
-                    break;
-                case "paused":
-                    displayState = PlaybackStateCompat.STATE_PAUSED;
-                    break;
-                case "stopped":
-                    displayState = PlaybackStateCompat.STATE_STOPPED;
-                    break;
-                default:
-                    displayState = PlaybackStateCompat.STATE_NONE;
-            }
-            
-            playbackStateBuilder.setState(
-                displayState, 
-                PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 
-                1.0f
-            );
-            
-            mediaSession.setPlaybackState(playbackStateBuilder.build());
-            Log.d(TAG, "MediaSession display state updated to: " + liveKitState);
-        }
-    }
-
     // Get the appropriate PendingIntent flags based on Android version
     private int getPendingIntentFlags(boolean isMutable) {
         // For Android 12+, we need to explicitly specify mutability

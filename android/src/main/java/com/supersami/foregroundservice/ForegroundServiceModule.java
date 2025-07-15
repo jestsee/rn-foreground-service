@@ -283,6 +283,25 @@ public class ForegroundServiceModule extends ReactContextBaseJavaModule {
         }
     }
 
+    @ReactMethod
+    public void updatePlaybackActions(ReadableMap actions, Promise promise) {
+        if (actions == null) {
+            promise.reject(ERROR_INVALID_CONFIG, "ForegroundService: Actions config is invalid");
+            return;
+        }  
+        try {
+            ForegroundService serviceInstance = ForegroundService.getInstance();
+            if (serviceInstance != null) {
+                serviceInstance.updatePlaybackActions(actions);
+                promise.resolve("Playback actions updated successfully");
+            } else {
+                promise.reject(ERROR_SERVICE_ERROR, "ForegroundService not running");
+            }
+        } catch (Exception e) {
+            promise.reject(ERROR_SERVICE_ERROR, "Failed to update playback actions: " + e.getMessage());
+        }
+    }
+
     public  void  foregroundEmitter(Intent intent){
     // this method is to send back data from java to javascript so one can easily
     // know which button from notification or the notification button is clicked
