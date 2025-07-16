@@ -109,6 +109,12 @@ class NotificationHelper {
     
     // Overloaded method to set specific playback state
     public void updatePlaybackStateForDisplay(String state) {
+        // Reinitialize MediaSession if it's null (backup safety check)
+        if (mediaSession == null) {
+            Log.w(TAG, "MediaSession was null, reinitializing...");
+            initializeMediaSession(context);
+        }
+        
         if (mediaSession != null) {
             PlaybackStateCompat.Builder playbackStateBuilder = 
                 new PlaybackStateCompat.Builder();
@@ -591,10 +597,19 @@ class NotificationHelper {
             mediaSession = null;
             Log.d(TAG, "MediaSession cleaned up");
         }
+        // Reset the singleton instance so a fresh one is created on next service start
+        instance = null;
+        Log.d(TAG, "NotificationHelper instance reset");
     }
 
     // Method to ensure MediaSession stays active for display
     public void ensureMediaSessionActive() {
+        // Reinitialize MediaSession if it's null (backup safety check)
+        if (mediaSession == null) {
+            Log.w(TAG, "MediaSession was null, reinitializing...");
+            initializeMediaSession(context);
+        }
+        
         if (mediaSession != null) {
             if (!mediaSession.isActive()) {
                 mediaSession.setActive(true);
@@ -606,6 +621,12 @@ class NotificationHelper {
     
     // Call this method when updating notifications to keep display controls active
     public void refreshMediaSession() {
+        // Reinitialize MediaSession if it's null (backup safety check)
+        if (mediaSession == null) {
+            Log.w(TAG, "MediaSession was null, reinitializing...");
+            initializeMediaSession(context);
+        }
+        
         if (mediaSession != null) {
             updatePlaybackStateForDisplay();
             Log.d(TAG, "MediaSession display state refreshed");
