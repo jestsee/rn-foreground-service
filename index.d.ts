@@ -153,5 +153,6 @@ declare const ReactNativeForegroundService: {
   get_all_tasks: () => {};
   eventListener: (callBack: any) => () => void;
   updateMediaDisplayState: (state: 'playing' | 'paused' | 'stopped') => Promise<string>;
+  fetchData: (input: any, options: any) => any;
 };
 export default ReactNativeForegroundService;

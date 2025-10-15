@@ -141,6 +141,32 @@ class ForegroundService {
   static async updateMediaDisplayState(state) {
     return await ForegroundServiceModule.updateMediaDisplayState(state);
   }
+
+  /**
+   * Fetch data from a URL.
+   * @param {string} url - The URL to fetch data from.
+   * @return Promise
+   */
+  static async fetchData(input, options) {
+    return new Promise((resolve, reject) => {
+      ForegroundServiceModule.fetchData(input, options)
+      .then((nativeResponse) => {
+        // Wrap into a Response-like object
+        const res = {
+          ok: nativeResponse.ok,
+          status: nativeResponse.status,
+          statusText: nativeResponse.statusText,
+          headers: {
+            get: (key) => nativeResponse.headers?.[key.toLowerCase()],
+          },
+          text: async () => nativeResponse.body,
+          json: async () => JSON.parse(nativeResponse.body),
+        };
+        resolve(res);
+      })
+      .catch(reject);
+    });
+  }
 }
 
 const randHashString = (len) => {
@@ -462,6 +488,7 @@ const ReactNativeForegroundService = {
   get_all_tasks,
   eventListener,
   updateMediaDisplayState: ForegroundService.updateMediaDisplayState,
+  fetchData: ForegroundService.fetchData,
 };
 
 export default ReactNativeForegroundService;

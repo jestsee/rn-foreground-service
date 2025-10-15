@@ -9,12 +9,27 @@ import android.app.NotificationManager;
 import android.os.Build;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import java.io.IOException;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Headers;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
+
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableMapKeySetIterator;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
@@ -34,10 +49,13 @@ public class ForegroundServiceModule extends ReactContextBaseJavaModule {
 
     private final ReactApplicationContext reactContext;
     private ForegroundReceiver foregroundReceiver = new ForegroundReceiver();
+    private final OkHttpClient client;
+    private static final String TAG = "BackgroundFetcher";
 
     public ForegroundServiceModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
+        client = new OkHttpClient();
         
         // Register receiver immediately when module is created
         IntentFilter filter = new IntentFilter();
@@ -53,6 +71,95 @@ public class ForegroundServiceModule extends ReactContextBaseJavaModule {
     @Override
     public String getName() {
         return "ForegroundService";
+    }
+
+    private void sendEvent(String eventName, String data) {
+        WritableMap params = Arguments.createMap();
+        params.putString("data", data);
+        try {
+            getReactApplicationContext()
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit(eventName, params);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to send event: " + e.getMessage());
+        }
+    }
+
+    @ReactMethod
+    public void fetchData(String url, @Nullable ReadableMap options, Promise promise) {
+        Log.d(TAG, "Fetching: " + url);
+
+        if (options == null) {
+            options = Arguments.createMap(); // empty map
+        }
+
+        // Default to GET
+        String method = options.hasKey("method") ? options.getString("method").toUpperCase() : "GET";
+
+        // Headers
+        Headers.Builder headersBuilder = new Headers.Builder();
+        if (options.hasKey("headers")) {
+            ReadableMap headersMap = options.getMap("headers");
+            ReadableMapKeySetIterator iter = headersMap.keySetIterator();
+            while (iter.hasNextKey()) {
+                String key = iter.nextKey();
+                String value = headersMap.getString(key);
+                headersBuilder.add(key, value);
+            }
+        }
+
+        // Body
+        RequestBody body = null;
+        if (options.hasKey("body")) {
+            body = RequestBody.create(
+                options.getString("body"),
+                okhttp3.MediaType.parse("application/json; charset=utf-8")
+            );
+        }
+
+        Request request = new Request.Builder()
+                .url(url)
+                .method(method, body)
+                .headers(headersBuilder.build())
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.e(TAG, "Fetch failed: " + e.getMessage());
+                sendEvent("BackgroundFetcher:error", e.getMessage());
+                promise.reject("FETCH_ERROR", e.getMessage()); // JS Promise reject
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                try {
+                    String responseBody = response.body() != null ? response.body().string() : "";
+                    Log.d(TAG, "Response body: " + responseBody);
+
+                    // Create JS-like Response
+                    Headers responseHeaders = response.headers();
+                    WritableMap headersMap = Arguments.createMap();
+                    for (String name : responseHeaders.names()) {
+                        headersMap.putString(name, responseHeaders.get(name));
+                    }
+                    WritableMap result = Arguments.createMap();
+                    result.putBoolean("ok", response.isSuccessful());
+                    result.putInt("status", response.code());
+                    result.putString("statusText", response.message());
+                    result.putString("body", responseBody);
+                    result.putMap("headers", headersMap);
+
+                    promise.resolve(result);
+
+                    // Emit event for background listeners
+                    sendEvent("BackgroundFetcher:success", responseBody);
+                } catch (IOException e) {
+                    sendEvent("BackgroundFetcher:error", e.getMessage());
+                    promise.reject("FETCH_ERROR", e.getMessage());
+                }
+            }
+        });
     }
 
     private boolean isRunning() {
