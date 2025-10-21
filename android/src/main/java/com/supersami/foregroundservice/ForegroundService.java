@@ -76,6 +76,11 @@ public class ForegroundService extends Service {
             notificationHelper.cleanup();
         }
         
+        // Stop MediaBrowserService
+        Intent mediaBrowserIntent = new Intent(this, ForegroundMediaBrowserService.class);
+        stopService(mediaBrowserIntent);
+        Log.d("ForegroundService", "MediaBrowserService stopped");
+        
         running = 0;
         mInstance = null;
     }
@@ -89,6 +94,11 @@ public class ForegroundService extends Service {
         try {
             int id = (int) notificationConfig.getDouble("id");
             String foregroundServiceType = notificationConfig.getString("ServiceType");
+            
+            // Start MediaBrowserService for Android Auto compatibility
+            Intent mediaBrowserIntent = new Intent(this, ForegroundMediaBrowserService.class);
+            startService(mediaBrowserIntent);
+            Log.d("ForegroundService", "MediaBrowserService started for Android Auto compatibility");
 
             NotificationHelper notificationHelper = NotificationHelper.getInstance(getApplicationContext());
             Notification notification = notificationHelper.buildNotification(getApplicationContext(), notificationConfig);

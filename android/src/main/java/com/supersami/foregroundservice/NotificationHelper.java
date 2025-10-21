@@ -45,61 +45,69 @@ class NotificationHelper {
         this.context = context;
         this.config = new NotificationConfig(context);
         
-        // Initialize MediaSession with proper setup
+        // Initialize MediaSession - either from MediaBrowserService or create a new one
         initializeMediaSession(context);
     }
 
     // Proper MediaSession initialization for display-only (no actual audio playback)
     private void initializeMediaSession(Context context) {
-        mediaSession = new MediaSessionCompat(context, "ForegroundService");
-        
-        // Set up the media session with custom callbacks that forward to your app
-        mediaSession.setCallback(new MediaSessionCompat.Callback() {
-            @Override
-            public boolean onMediaButtonEvent(Intent mediaButtonEvent) {
-                // Don't handle media button events - let your app handle them
-                Log.d(TAG, "Media button event received but not handled by MediaSession");
-                return false; // Return false to let other handlers process it
-            }
+        // Try to get MediaSession from MediaBrowserService if available
+        ForegroundMediaBrowserService mediaBrowserService = ForegroundMediaBrowserService.getInstance();
+        if (mediaBrowserService != null && mediaBrowserService.getMediaSession() != null) {
+            mediaSession = mediaBrowserService.getMediaSession();
+            Log.d(TAG, "Using MediaSession from MediaBrowserService for Android Auto compatibility");
+        } else {
+            // Fallback: Create our own MediaSession if MediaBrowserService isn't running
+            mediaSession = new MediaSessionCompat(context, "ForegroundService");
             
-            @Override
-            public void onPlay() {
-                Log.d(TAG, "MediaSession onPlay called - forwarding to app");
-                emitMediaSessionEvent("media_play");
-            }
+            // Set up the media session with custom callbacks that forward to your app
+            mediaSession.setCallback(new MediaSessionCompat.Callback() {
+                @Override
+                public boolean onMediaButtonEvent(Intent mediaButtonEvent) {
+                    // Don't handle media button events - let your app handle them
+                    Log.d(TAG, "Media button event received but not handled by MediaSession");
+                    return false; // Return false to let other handlers process it
+                }
+                
+                @Override
+                public void onPlay() {
+                    Log.d(TAG, "MediaSession onPlay called - forwarding to app");
+                    emitMediaSessionEvent("media_play");
+                }
+                
+                @Override
+                public void onPause() {
+                    Log.d(TAG, "MediaSession onPause called - forwarding to app");
+                    emitMediaSessionEvent("media_pause");
+                }
+                
+                @Override
+                public void onSkipToNext() {
+                    Log.d(TAG, "MediaSession onSkipToNext called - forwarding to app");
+                    emitMediaSessionEvent("media_next");
+                }
+                
+                @Override
+                public void onSkipToPrevious() {
+                    Log.d(TAG, "MediaSession onSkipToPrevious called - forwarding to app");
+                    emitMediaSessionEvent("media_previous");
+                }
+                
+                @Override
+                public void onStop() {
+                    Log.d(TAG, "MediaSession onStop called - forwarding to app");
+                    emitMediaSessionEvent("media_stop");
+                }
+            });
             
-            @Override
-            public void onPause() {
-                Log.d(TAG, "MediaSession onPause called - forwarding to app");
-                emitMediaSessionEvent("media_pause");
-            }
+            // Set playback state to display the controls but indicate we're not actually playing audio
+            updatePlaybackStateForDisplay();
             
-            @Override
-            public void onSkipToNext() {
-                Log.d(TAG, "MediaSession onSkipToNext called - forwarding to app");
-                emitMediaSessionEvent("media_next");
-            }
+            // Make the session active for UI display
+            mediaSession.setActive(true);
             
-            @Override
-            public void onSkipToPrevious() {
-                Log.d(TAG, "MediaSession onSkipToPrevious called - forwarding to app");
-                emitMediaSessionEvent("media_previous");
-            }
-            
-            @Override
-            public void onStop() {
-                Log.d(TAG, "MediaSession onStop called - forwarding to app");
-                emitMediaSessionEvent("media_stop");
-            }
-        });
-        
-        // Set playback state to display the controls but indicate we're not actually playing audio
-        updatePlaybackStateForDisplay();
-        
-        // Make the session active for UI display
-        mediaSession.setActive(true);
-        
-        Log.d(TAG, "Display-only MediaSession initialized and activated");
+            Log.d(TAG, "Display-only MediaSession initialized and activated (standalone mode)");
+        }
     }
     
     // Update playback state for display purposes only (actual playback handled by LiveKit)
@@ -109,6 +117,30 @@ class NotificationHelper {
     
     // Overloaded method to set specific playback state
     public void updatePlaybackStateForDisplay(String state) {
+        // Try to use MediaBrowserService if available
+        ForegroundMediaBrowserService mediaBrowserService = ForegroundMediaBrowserService.getInstance();
+        if (mediaBrowserService != null) {
+            // Map state string to PlaybackStateCompat constant
+            int displayState;
+            switch (state.toLowerCase()) {
+                case "playing":
+                    displayState = PlaybackStateCompat.STATE_PLAYING;
+                    break;
+                case "paused":
+                    displayState = PlaybackStateCompat.STATE_PAUSED;
+                    break;
+                case "stopped":
+                    displayState = PlaybackStateCompat.STATE_STOPPED;
+                    break;
+                default:
+                    displayState = PlaybackStateCompat.STATE_PLAYING; // Default to playing
+            }
+            mediaBrowserService.updatePlaybackState(displayState);
+            Log.d(TAG, "Updated MediaBrowserService playback state to: " + state);
+            return;
+        }
+        
+        // Fallback: Update our own MediaSession if MediaBrowserService isn't available
         // Reinitialize MediaSession if it's null (backup safety check)
         if (mediaSession == null) {
             Log.w(TAG, "MediaSession was null, reinitializing...");
@@ -591,12 +623,23 @@ class NotificationHelper {
     
     // Clean up MediaSession when done
     public void cleanup() {
-        if (mediaSession != null) {
+        // Check if MediaSession belongs to MediaBrowserService
+        ForegroundMediaBrowserService mediaBrowserService = ForegroundMediaBrowserService.getInstance();
+        boolean isMediaBrowserServiceSession = mediaBrowserService != null && 
+            mediaSession != null && 
+            mediaSession == mediaBrowserService.getMediaSession();
+        
+        if (mediaSession != null && !isMediaBrowserServiceSession) {
+            // Only release MediaSession if it's not managed by MediaBrowserService
             mediaSession.setActive(false);
             mediaSession.release();
-            mediaSession = null;
-            Log.d(TAG, "MediaSession cleaned up");
+            Log.d(TAG, "MediaSession cleaned up (standalone mode)");
+        } else if (isMediaBrowserServiceSession) {
+            Log.d(TAG, "MediaSession belongs to MediaBrowserService, not releasing");
         }
+        
+        mediaSession = null;
+        
         // Reset the singleton instance so a fresh one is created on next service start
         instance = null;
         Log.d(TAG, "NotificationHelper instance reset");
